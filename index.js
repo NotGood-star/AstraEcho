@@ -2,11 +2,17 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('fs');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent
+    ] 
+});
 
 client.commands = new Collection();
 
-// Command Loader Logic
+// Command Loader
 const commandFolders = fs.readdirSync('./commands');
 for (const folder of commandFolders) {
     const commandFiles = fs.readdirSync(`./commands/${folder}`).filter(file => file.endsWith('.js'));
@@ -17,12 +23,22 @@ for (const folder of commandFolders) {
 }
 
 client.once('ready', () => {
-    console.log(`AstraEcho is online! Prefix: /`);
+    console.log(`AstraEcho is online and ready!`);
 });
 
-client.on('messageCreate', message => {
-    if (!message.content.startsWith('/') || message.author.bot) return;
-    // Logic to handle the slash command execution
+// Listener for Slash Commands
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        await interaction.reply({ content: 'There was an error executing this game!', ephemeral: true });
+    }
 });
 
 client.login(process.env.DISCORD_TOKEN);
