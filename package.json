@@ -1,0 +1,20 @@
+{
+  "name": "astraecho",
+  "version": "1.0.0",
+  "description": "A discord bot featuring luck, quiz, word, and PvP games.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy-cmds.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.0",
+    "dotenv": "^16.4.5"
+  },
+  "author": "AstraEchoDev",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
