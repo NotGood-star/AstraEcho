@@ -4,21 +4,25 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 
-// 1. Keep-Alive Server for Render
+// 1. WEB SERVER: Keeps the bot alive on Render
+const PORT = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
-    res.writeHead(200);
-    res.end('AstraEcho is alive!');
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('AstraEcho is running!');
 });
-server.listen(process.env.PORT || 3000);
 
-// 2. Setup
+server.listen(PORT, () => {
+    console.log(`Web server listening on port ${PORT}`);
+});
+
+// 2. DISCORD SETUP
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-// 3. Command Loader
+// 3. DYNAMIC COMMAND LOADER
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
@@ -28,18 +32,18 @@ for (const folder of commandFolders) {
     for (const file of commandFiles) {
         const filePath = `file://${path.join(commandsPath, file)}`;
         const command = await import(filePath);
-        if (command.default && command.default.data) {
+        if (command.default?.data) {
             client.commands.set(command.default.data.name, command.default);
         }
     }
 }
 
-// 4. Bot Events
+// 4. EVENT LISTENERS
 client.once('clientReady', () => {
-    console.log(`AstraEcho is online and ready!`);
+    console.log(`AstraEcho is logged in as ${client.user.tag}`);
 });
 
-client.on('interactionCreate', async interaction => {
+client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -48,7 +52,7 @@ client.on('interactionCreate', async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
-        await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        await interaction.reply({ content: 'Error executing this command.', ephemeral: true });
     }
 });
 
