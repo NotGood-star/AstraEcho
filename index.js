@@ -2,14 +2,23 @@ import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import http from 'node:http';
 
+// 1. Keep-Alive Server for Render
+const server = http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end('AstraEcho is alive!');
+});
+server.listen(process.env.PORT || 3000);
+
+// 2. Setup
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-// Command Loading Logic
+// 3. Command Loader
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
@@ -19,12 +28,14 @@ for (const folder of commandFolders) {
     for (const file of commandFiles) {
         const filePath = `file://${path.join(commandsPath, file)}`;
         const command = await import(filePath);
-        // Set a new item in the Collection with the key as the command name
-        client.commands.set(command.default.data.name, command.default);
+        if (command.default && command.default.data) {
+            client.commands.set(command.default.data.name, command.default);
+        }
     }
 }
 
-client.once('ready', () => {
+// 4. Bot Events
+client.once('clientReady', () => {
     console.log(`AstraEcho is online and ready!`);
 });
 
@@ -37,7 +48,7 @@ client.on('interactionCreate', async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
-        await interaction.reply({ content: 'There was an error!', ephemeral: true });
+        await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
     }
 });
 
