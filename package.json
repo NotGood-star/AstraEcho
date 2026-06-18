@@ -1,0 +1,16 @@
+{
+  "name": "astraecho",
+  "version": "1.0.0",
+  "description": "A feature-rich game bot for Discord",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.17.3"
+  }
+}
