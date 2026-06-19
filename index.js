@@ -1,47 +1,43 @@
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const express = require('express'); // Added for Render
 require('dotenv').config();
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// --- Keep-Alive Web Server ---
+const app = express();
+app.get('/', (req, res) => res.send('AstraEcho is running!'));
+app.listen(process.env.PORT || 3000, () => console.log('Web server is active.'));
 
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-// Recursive function to load commands from sub-folders
+// Load Commands (Recursive)
 const loadCommands = (dir) => {
     const files = fs.readdirSync(dir);
     for (const file of files) {
         const filePath = path.join(dir, file);
-        const stat = fs.statSync(filePath);
-        
-        if (stat.isDirectory()) {
-            loadCommands(filePath); // Recurse into sub-folders
+        if (fs.statSync(filePath).isDirectory()) {
+            loadCommands(filePath);
         } else if (file.endsWith('.js')) {
             const command = require(filePath);
-            // Set a new item in the Collection with the key as the command name
             if ('data' in command && 'execute' in command) {
                 client.commands.set(command.data.name, command);
-                console.log(`Loaded command: ${command.data.name}`);
-            } else {
-                console.log(`[WARNING] The command at ${filePath} is missing "data" or "execute".`);
             }
         }
     }
 };
 
-// Load commands from the 'commands' directory
-const commandsPath = path.join(__dirname, 'commands');
-loadCommands(commandsPath);
+loadCommands(path.join(__dirname, 'commands'));
 
-client.once('ready', () => {
-    console.log(`🚀 AstraEcho is online and ready!`);
-    console.log(`Logged in as ${client.user.tag}`);
+// Client Ready
+client.once(Events.ClientReady, (c) => {
+    console.log(`🚀 AstraEcho is online as ${c.user.tag}!`);
 });
 
-// Handle Slash Command Interactions
-client.on('interactionCreate', async interaction => {
+// Interaction Handling
+client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
-
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
 
@@ -49,11 +45,7 @@ client.on('interactionCreate', async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-        }
+        await interaction.reply({ content: 'Error executing command.', ephemeral: true });
     }
 });
 
