@@ -1,10 +1,10 @@
-const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, REST, Routes } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
-const express = require('express'); // Added for Render
+const express = require('express');
 require('dotenv').config();
 
-// --- Keep-Alive Web Server ---
+// --- 1. Keep-Alive Web Server ---
 const app = express();
 app.get('/', (req, res) => res.send('AstraEcho is running!'));
 app.listen(process.env.PORT || 3000, () => console.log('Web server is active.'));
@@ -12,7 +12,7 @@ app.listen(process.env.PORT || 3000, () => console.log('Web server is active.'))
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-// Load Commands (Recursive)
+// --- 2. Load Commands (Recursive) ---
 const loadCommands = (dir) => {
     const files = fs.readdirSync(dir);
     for (const file of files) {
@@ -30,12 +30,27 @@ const loadCommands = (dir) => {
 
 loadCommands(path.join(__dirname, 'commands'));
 
-// Client Ready
-client.once(Events.ClientReady, (c) => {
+// --- 3. Client Ready & Auto-Register ---
+client.once(Events.ClientReady, async (c) => {
     console.log(`🚀 AstraEcho is online as ${c.user.tag}!`);
+
+    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+    try {
+        console.log('Started refreshing application (/) commands.');
+        const commands = client.commands.map(cmd => cmd.data.toJSON());
+        
+        await rest.put(
+            Routes.applicationCommands('1517031078777327706'),
+            { body: commands },
+        );
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error('Registration Error:', error);
+    }
 });
 
-// Interaction Handling
+// --- 4. Interaction Handling ---
 client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
     const command = client.commands.get(interaction.commandName);
@@ -45,7 +60,7 @@ client.on(Events.InteractionCreate, async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
-        await interaction.reply({ content: 'Error executing command.', ephemeral: true });
+        await interaction.reply({ content: 'There was an error executing this command!', ephemeral: true });
     }
 });
 
