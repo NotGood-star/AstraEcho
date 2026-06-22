@@ -31,7 +31,8 @@ module.exports = {
                     row.addComponents(
                         new ButtonBuilder()
                             .setCustomId(`btn_${index}`)
-                            .setLabel(board[index] ? board[index] : ' ')
+                            .setLabel(board[index] ? ' ' : ' ') // Keep visual clean
+                            .setEmoji(board[index] === 'X' ? '❌' : (board[index] === 'O' ? '⭕' : '➖'))
                             .setStyle(board[index] ? ButtonStyle.Secondary : ButtonStyle.Primary)
                             .setDisabled(disabled || board[index] !== null)
                     );
@@ -44,15 +45,17 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setTitle('🎮 Tic-Tac-Toe')
             .setDescription(`**${interaction.user.username}** (❌) vs **${opponent.username}** (⭕)\n\n${getBoardDisplay()}`)
-            .setColor(0x0099ff)
-            .setFooter({ text: `Current turn: ${interaction.user.username}` });
+            .setColor(0x0099ff);
 
         await interaction.reply({ embeds: [embed], components: createButtons() });
 
         const collector = interaction.channel.createMessageComponentCollector({ time: 60000 });
 
         collector.on('collect', async i => {
-            if (i.user.id !== turn) return i.reply({ content: "It's not your turn!", ephemeral: true });
+            // Acknowledge the interaction immediately to stop the error
+            await i.deferUpdate();
+
+            if (i.user.id !== turn) return; // Only current player can move
 
             const index = parseInt(i.customId.split('_')[1]);
             board[index] = turn === interaction.user.id ? 'X' : 'O';
@@ -69,14 +72,13 @@ module.exports = {
             const nextEmbed = new EmbedBuilder()
                 .setTitle('🎮 Tic-Tac-Toe')
                 .setColor(winner ? 0x00ff00 : 0x0099ff)
-                .setDescription(winner ? `🎉 **${winner} wins!**\n\n${getBoardDisplay()}` : `**${interaction.user.username}** (❌) vs **${opponent.username}** (⭕)\n\n${getBoardDisplay()}`)
-                .setFooter({ text: winner ? 'Game Over' : `Current turn: ${turn === interaction.user.id ? interaction.user.username : opponent.username}` });
+                .setDescription(winner ? `🎉 **${winner} wins!**\n\n${getBoardDisplay()}` : `**${interaction.user.username}** (❌) vs **${opponent.username}** (⭕)\n\n${getBoardDisplay()}`);
 
             if (winner || !board.includes(null)) {
-                await i.update({ embeds: [nextEmbed], components: createButtons(true) });
+                await interaction.editReply({ embeds: [nextEmbed], components: createButtons(true) });
                 collector.stop();
             } else {
-                await i.update({ embeds: [nextEmbed], components: createButtons() });
+                await interaction.editReply({ embeds: [nextEmbed], components: createButtons() });
             }
         });
     },
