@@ -10,12 +10,12 @@ app.get('/', (req, res) => res.send('AstraEcho is alive!'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Web server listening on port ${PORT}`));
 
-// 2. Updated Client Setup with all necessary Intents
+// 2. Client Setup
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages, // Required for Message Collectors (GTN/Word Games)
-        GatewayIntentBits.MessageContent  // Required to read message text
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent 
     ] 
 });
 client.commands = new Collection();
@@ -55,7 +55,7 @@ client.once(Events.ClientReady, async (c) => {
 
 // 5. Interaction Handler (Slash Commands AND Buttons)
 client.on(Events.InteractionCreate, async interaction => {
-    // If it's a Chat Command, handle it normally
+    // A. Handle Slash Commands
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
@@ -64,18 +64,19 @@ client.on(Events.InteractionCreate, async interaction => {
             await command.execute(interaction);
         } catch (error) {
             console.error(error);
+            const errorMessage = { content: 'There was an error while executing this command!', ephemeral: true };
             if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: 'There was an error!', ephemeral: true });
+                await interaction.followUp(errorMessage);
             } else {
-                await interaction.reply({ content: 'There was an error!', ephemeral: true });
+                await interaction.reply(errorMessage);
             }
         }
     } 
-    // If it's a Button, we DO NOT return; we let the command collector handle it
+    // B. Handle Buttons
     else if (interaction.isButton()) {
-        // We don't need to do anything here! 
-        // Your command collector in ttt.js is already listening for these interactions.
-        // Returning here prevents the error "Interaction Failed".
+        // We do NOT return here because the command collector in your ttt.js 
+        // will handle the button interaction. Returning early effectively 
+        // "ignores" the button and causes the "Interaction Failed" message.
         return;
     }
 });
