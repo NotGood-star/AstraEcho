@@ -1,0 +1,20 @@
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('score')
+        .setDescription('Check your total wins across all games!'),
+    async execute(interaction) {
+        const data = JSON.parse(fs.readFileSync('./data/scores.json', 'utf8'));
+        const userId = interaction.user.id;
+        const userStats = data.users[userId] || { wins: 0 };
+
+        const embed = new EmbedBuilder()
+            .setTitle(`🏆 Scoreboard: ${interaction.user.username}`)
+            .setDescription(`You have a total of **${userStats.wins} wins**!`)
+            .setColor(0xf1c40f);
+
+        await interaction.reply({ embeds: [embed] });
+    },
+};
