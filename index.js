@@ -53,21 +53,30 @@ client.once(Events.ClientReady, async (c) => {
     }
 });
 
-// 5. Interaction Handler (Slash Commands)
+// 5. Interaction Handler (Slash Commands AND Buttons)
 client.on(Events.InteractionCreate, async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
+    // If it's a Chat Command, handle it normally
+    if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
 
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error!', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'There was an error!', ephemeral: true });
+        try {
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(error);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'There was an error!', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'There was an error!', ephemeral: true });
+            }
         }
+    } 
+    // If it's a Button, we DO NOT return; we let the command collector handle it
+    else if (interaction.isButton()) {
+        // We don't need to do anything here! 
+        // Your command collector in ttt.js is already listening for these interactions.
+        // Returning here prevents the error "Interaction Failed".
+        return;
     }
 });
 
