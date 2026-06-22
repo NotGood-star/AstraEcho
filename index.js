@@ -53,7 +53,7 @@ client.once(Events.ClientReady, async (c) => {
     }
 });
 
-// 5. Interaction Handler (Slash Commands AND Buttons)
+// 5. Interaction Handler (Slash, Buttons, and Select Menus)
 client.on(Events.InteractionCreate, async interaction => {
     // A. Handle Slash Commands
     if (interaction.isChatInputCommand()) {
@@ -72,12 +72,26 @@ client.on(Events.InteractionCreate, async interaction => {
             }
         }
     } 
-    // B. Handle Buttons
+    // B. Handle Buttons (for Games)
     else if (interaction.isButton()) {
-        // We do NOT return here because the command collector in your ttt.js 
-        // will handle the button interaction. Returning early effectively 
-        // "ignores" the button and causes the "Interaction Failed" message.
-        return;
+        return; // Collector handles this
+    }
+    // C. Handle Ticket Select Menu
+    else if (interaction.isStringSelectMenu()) {
+        if (interaction.customId === 'ticket_menu') {
+            const category = interaction.values[0];
+            const channel = await interaction.guild.channels.create({
+                name: `ticket-${interaction.user.username}`,
+                permissionOverwrites: [
+                    { id: interaction.guild.id, deny: ['ViewChannel'] },
+                    { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+                    { id: interaction.client.user.id, allow: ['ViewChannel', 'SendMessages'] }
+                ]
+            });
+
+            await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
+            channel.send(`Hello ${interaction.user}, welcome to your support ticket regarding **${category}**. A staff member will be with you shortly.`);
+        }
     }
 });
 
