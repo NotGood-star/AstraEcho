@@ -4,23 +4,16 @@ const path = require('node:path');
 const express = require('express');
 require('dotenv').config();
 
-// 1. Keep-Alive Server
 const app = express();
 app.get('/', (req, res) => res.send('AstraEcho is alive!'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Web server listening on port ${PORT}`));
 
-// 2. Client Setup
 const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent 
-    ] 
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 client.commands = new Collection();
 
-// 3. Recursive Command Loader
 const loadCommands = (dir) => {
     const files = fs.readdirSync(dir);
     for (const file of files) {
@@ -39,21 +32,21 @@ const loadCommands = (dir) => {
 
 loadCommands(path.join(__dirname, 'commands'));
 
-// 4. Client Ready & Auto-Registration
 client.once(Events.ClientReady, async (c) => {
     console.log(`🚀 AstraEcho is online as ${c.user.tag}!`);
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
     try {
-        const commands = client.commands.map(cmd => cmd.data.toJSON());
-        await rest.put(Routes.applicationCommands('1517031078777327706'), { body: commands });
-        console.log(`✅ Successfully registered ${commands.length} commands.`);
+        const commandsData = client.commands.map(cmd => cmd.data.toJSON());
+        console.log(`🔍 Registering ${commandsData.length} commands with Discord...`);
+        
+        await rest.put(Routes.applicationCommands('1517031078777327706'), { body: commandsData });
+        console.log(`✅ Successfully synced ${commandsData.length} commands.`);
     } catch (error) {
         console.error('❌ Registration Error:', error);
     }
 });
 
-// 5. Interaction Handler (Slash, Buttons, and Select Menus)
 client.on(Events.InteractionCreate, async interaction => {
     // A. Handle Slash Commands
     if (interaction.isChatInputCommand()) {
@@ -64,34 +57,23 @@ client.on(Events.InteractionCreate, async interaction => {
             await command.execute(interaction);
         } catch (error) {
             console.error(error);
-            const errorMessage = { content: 'There was an error while executing this command!', ephemeral: true };
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(errorMessage);
-            } else {
-                await interaction.reply(errorMessage);
-            }
+            const msg = { content: 'There was an error while executing this command!', ephemeral: true };
+            interaction.replied || interaction.deferred ? await interaction.followUp(msg) : await interaction.reply(msg);
         }
     } 
-    // B. Handle Buttons (for Games)
-    else if (interaction.isButton()) {
-        return; // Collector handles this
-    }
-    // C. Handle Ticket Select Menu
-    else if (interaction.isStringSelectMenu()) {
-        if (interaction.customId === 'ticket_menu') {
-            const category = interaction.values[0];
-            const channel = await interaction.guild.channels.create({
-                name: `ticket-${interaction.user.username}`,
-                permissionOverwrites: [
-                    { id: interaction.guild.id, deny: ['ViewChannel'] },
-                    { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
-                    { id: interaction.client.user.id, allow: ['ViewChannel', 'SendMessages'] }
-                ]
-            });
-
-            await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
-            channel.send(`Hello ${interaction.user}, welcome to your support ticket regarding **${category}**. A staff member will be with you shortly.`);
-        }
+    // B. Handle Select Menus (Tickets)
+    else if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_menu') {
+        const category = interaction.values[0];
+        const channel = await interaction.guild.channels.create({
+            name: `ticket-${interaction.user.username}`,
+            permissionOverwrites: [
+                { id: interaction.guild.id, deny: ['ViewChannel'] },
+                { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+                { id: interaction.client.user.id, allow: ['ViewChannel', 'SendMessages'] }
+            ]
+        });
+        await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
+        channel.send(`Hello ${interaction.user}, welcome to your support ticket regarding **${category}**. A staff member will be with you shortly.`);
     }
 });
 
