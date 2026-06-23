@@ -10,8 +10,13 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Web server listening on port ${PORT}`));
 
 const client = new Client({ 
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent 
+    ] 
 });
+
 client.commands = new Collection();
 
 const loadCommands = (dir) => {
@@ -38,7 +43,7 @@ client.once(Events.ClientReady, async (c) => {
 
     try {
         const commandsData = client.commands.map(cmd => cmd.data.toJSON());
-        console.log(`🔍 Registering ${commandsData.length} commands with Discord...`);
+        console.log(`🔍 Registering ${commandsData.length} commands...`);
         
         await rest.put(Routes.applicationCommands('1517031078777327706'), { body: commandsData });
         console.log(`✅ Successfully synced ${commandsData.length} commands.`);
@@ -48,7 +53,6 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
-    // A. Handle Slash Commands
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
@@ -57,11 +61,14 @@ client.on(Events.InteractionCreate, async interaction => {
             await command.execute(interaction);
         } catch (error) {
             console.error(error);
-            const msg = { content: 'There was an error while executing this command!', ephemeral: true };
-            interaction.replied || interaction.deferred ? await interaction.followUp(msg) : await interaction.reply(msg);
+            const msg = { content: 'There was an error!', ephemeral: true };
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp(msg);
+            } else {
+                await interaction.reply(msg);
+            }
         }
     } 
-    // B. Handle Select Menus (Tickets)
     else if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_menu') {
         const category = interaction.values[0];
         const channel = await interaction.guild.channels.create({
