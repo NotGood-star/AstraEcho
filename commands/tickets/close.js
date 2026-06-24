@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,7 +9,15 @@ module.exports = {
         if (!interaction.channel.name.startsWith('ticket-')) {
             return interaction.reply({ content: 'This is not a ticket channel.', ephemeral: true });
         }
-        await interaction.reply('Closing channel in 5 seconds...');
-        setTimeout(() => interaction.channel.delete(), 5000);
+
+        const embed = new EmbedBuilder()
+            .setTitle('🔒 Ticket Closing')
+            .setDescription('This ticket will be deleted in 5 seconds.')
+            .setColor(0xff0000)
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed] });
+        
+        setTimeout(() => interaction.channel.delete().catch(console.error), 5000);
     }
 };
