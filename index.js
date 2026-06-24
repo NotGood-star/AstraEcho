@@ -65,8 +65,11 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     } 
     // 2. Handle Ticket Menu
+    // ... inside client.on(Events.InteractionCreate, ...)
     else if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_menu') {
         const category = interaction.values[0];
+        
+        // Create the channel
         const channel = await interaction.guild.channels.create({
             name: `ticket-${interaction.user.username}`,
             permissionOverwrites: [
@@ -87,8 +90,20 @@ client.on(Events.InteractionCreate, async interaction => {
             .setColor(0x0099ff);
 
         await channel.send({ embeds: [embed], components: [buttons] });
+        
+        // PING STAFF LOGIC
+        try {
+            const config = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+            if (config.staffRoleId) {
+                await channel.send(`<@&${config.staffRoleId}>, a new ticket has been opened!`);
+            }
+        } catch (err) {
+            console.log("No config file found or role not set.");
+        }
+
         await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
-    } 
+    }
+
     // 3. Handle Buttons (Claim/Close)
     else if (interaction.isButton()) {
         if (interaction.customId === 'claim_ticket') {
