@@ -1,9 +1,10 @@
-const { Client, GatewayIntentBits, Collection, Events, REST, Routes } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 require('dotenv').config();
 
+// Web Server for Render/Uptime
 const app = express();
 app.get('/', (req, res) => res.send('AstraEcho is alive!'));
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,7 @@ const client = new Client({
 
 client.commands = new Collection();
 
+// Command Loader
 const loadCommands = (dir) => {
     const files = fs.readdirSync(dir);
     for (const file of files) {
@@ -34,7 +36,6 @@ const loadCommands = (dir) => {
         }
     }
 };
-
 loadCommands(path.join(__dirname, 'commands'));
 
 client.once(Events.ClientReady, async (c) => {
@@ -43,8 +44,6 @@ client.once(Events.ClientReady, async (c) => {
 
     try {
         const commandsData = client.commands.map(cmd => cmd.data.toJSON());
-        console.log(`🔍 Registering ${commandsData.length} commands...`);
-        
         await rest.put(Routes.applicationCommands('1517031078777327706'), { body: commandsData });
         console.log(`✅ Successfully synced ${commandsData.length} commands.`);
     } catch (error) {
@@ -53,22 +52,19 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
+    // 1. Handle Slash Commands
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
-
         try {
             await command.execute(interaction);
         } catch (error) {
             console.error(error);
             const msg = { content: 'There was an error!', ephemeral: true };
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(msg);
-            } else {
-                await interaction.reply(msg);
-            }
+            interaction.replied || interaction.deferred ? await interaction.followUp(msg) : await interaction.reply(msg);
         }
     } 
+    // 2. Handle Ticket Menu
     else if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_menu') {
         const category = interaction.values[0];
         const channel = await interaction.guild.channels.create({
@@ -79,8 +75,28 @@ client.on(Events.InteractionCreate, async interaction => {
                 { id: interaction.client.user.id, allow: ['ViewChannel', 'SendMessages'] }
             ]
         });
+
+        const buttons = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('claim_ticket').setLabel('Claim').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('close_ticket').setLabel('Close').setStyle(ButtonStyle.Danger)
+        );
+
+        const embed = new EmbedBuilder()
+            .setTitle('Support Ticket')
+            .setDescription(`Hello ${interaction.user}, welcome to your support ticket regarding **${category}**. A staff member will be with you shortly.`)
+            .setColor(0x0099ff);
+
+        await channel.send({ embeds: [embed], components: [buttons] });
         await interaction.reply({ content: `Ticket created: ${channel}`, ephemeral: true });
-        channel.send(`Hello ${interaction.user}, welcome to your support ticket regarding **${category}**. A staff member will be with you shortly.`);
+    } 
+    // 3. Handle Buttons (Claim/Close)
+    else if (interaction.isButton()) {
+        if (interaction.customId === 'claim_ticket') {
+            await interaction.reply({ content: `${interaction.user} has claimed this ticket.` });
+        } else if (interaction.customId === 'close_ticket') {
+            await interaction.reply({ content: 'Closing ticket in 5 seconds...' });
+            setTimeout(() => interaction.channel.delete().catch(console.error), 5000);
+        }
     }
 });
 
