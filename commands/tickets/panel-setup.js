@@ -27,6 +27,9 @@ module.exports = {
         .addStringOption(o => o.setName('c9_d').setDescription('C9 Desc')),
 
     async execute(interaction) {
+        // 1. Acknowledge privately to prevent command attribution
+        await interaction.reply({ content: 'Panel generated successfully.', ephemeral: true });
+
         const options = [];
         // Loop through 1-9
         for (let i = 1; i <= 9; i++) {
@@ -49,6 +52,7 @@ module.exports = {
             .setDescription(interaction.options.getString('desc'))
             .setColor(0x00ff00);
 
-        await interaction.reply({ embeds: [embed], components: [menu] });
+        // 2. Send the panel as a separate message
+        await interaction.channel.send({ embeds: [embed], components: [menu] });
     }
 };
